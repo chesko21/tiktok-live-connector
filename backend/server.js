@@ -1,3 +1,4 @@
+
 import express from "express";
 import { WebSocketServer } from "ws";
 import { TikTokLiveConnection } from "tiktok-live-connector";
@@ -10,24 +11,20 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 
-// Middleware
-app.use(
-  cors({
-    origin: "https://tiktok-live-connector.vercel.app",
-    methods: ["GET", "POST"],
-  })
-);
+app.use(cors({
+  origin: "https://tiktok-live-connector.vercel.app", 
+  methods: ["GET", "POST"],
+}));
 
 const server = http.createServer(app);
+
 const wss = new WebSocketServer({ server });
 
 const connections = {};
 let giftCatalog = {};
 
-// Load gifts
 const loader = new TikTokLiveConnection("anyuser");
-loader
-  .fetchAvailableGifts()
+loader.fetchAvailableGifts()
   .then((gifts) => {
     gifts.forEach((gift) => {
       giftCatalog[gift.id] = {
@@ -158,9 +155,7 @@ app.get("/connect", async (req, res) => {
 
     tiktok.on("error", (err) => {
       if (err?.exception?.message?.includes("WebcastInRoomBannerMessage")) {
-        console.log(
-          `ℹ️ [${username}] Skipped decode error for WebcastInRoomBannerMessage`
-        );
+        console.log(`ℹ️ [${username}] Skipped decode error for WebcastInRoomBannerMessage`);
         return;
       }
       if (err?.info?.includes("Failed to retrieve Room ID")) {
@@ -200,7 +195,8 @@ function broadcast(msg) {
 }
 
 // ======================= START =======================
-server.listen(port, "0.0.0.0", () => {
-  console.log(`🚀 Backend running on http://0.0.0.0:${port}`);
-  console.log(`📡 WebSocket running on ws://0.0.0.0:${port}`);
+server.listen(port, () => {
+  console.log(`🚀 Backend running on http://localhost:${port}`);
+  console.log(`📡 WebSocket running on ws://localhost:${port}`);
 });
+
