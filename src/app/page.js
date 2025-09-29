@@ -21,9 +21,14 @@ export default function Home() {
   useEffect(() => {
     if (!connected) return;
   
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
+    const wsUrl =
+      process.env.NEXT_PUBLIC_WS_URL ||
+      (window.location.hostname === "localhost"
+        ? "ws://localhost:3001" 
+        : "wss://tiktok-live-connector-6e18.onrender.com");
+  
     const socket = new WebSocket(wsUrl);
-    
+  
     socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       if (data.username !== username) return;
