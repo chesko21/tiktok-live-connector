@@ -11,9 +11,15 @@ export async function GET(req) {
     );
   }
 
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (!apiUrl) {
+    return NextResponse.json(
+      { status: "error", message: "NEXT_PUBLIC_API_URL not set" },
+      { status: 500 }
+    );
+  }
+
   try {
-    // Ambil URL backend dari env
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
     const res = await fetch(`${apiUrl}/connect?username=${username}`);
     const data = await res.json();
     return NextResponse.json(data);
