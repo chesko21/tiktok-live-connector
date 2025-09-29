@@ -1,19 +1,30 @@
+
 import express from "express";
 import { WebSocketServer } from "ws";
 import { TikTokLiveConnection } from "tiktok-live-connector";
 import dotenv from "dotenv";
+import cors from "cors";
+import http from "http";
+
 dotenv.config();
 
 const app = express();
-const port = 3001;
+const port = process.env.PORT || 3001;
+
+app.use(cors({
+  origin: "https://tiktok-live-connector.vercel.app", 
+  methods: ["GET", "POST"],
+}));
+
+const server = http.createServer(app);
+
+const wss = new WebSocketServer({ server });
 
 const connections = {};
-const wss = new WebSocketServer({ port: 8080 });
 let giftCatalog = {};
 
 const loader = new TikTokLiveConnection("anyuser");
-loader
-  .fetchAvailableGifts()
+loader.fetchAvailableGifts()
   .then((gifts) => {
     gifts.forEach((gift) => {
       giftCatalog[gift.id] = {
@@ -22,9 +33,7 @@ loader
         image: gift.image?.urlList?.[0] || gift.image?.url?.[0] || null,
       };
     });
-    console.log(
-      `✅ Gift catalog loaded: ${Object.keys(giftCatalog).length} items`
-    );
+    console.log(`✅ Gift catalog loaded: ${Object.keys(giftCatalog).length} items`);
   })
   .catch((err) => {
     console.error("❌ Failed to fetch gift list:", err);
@@ -34,9 +43,7 @@ loader
 app.get("/connect", async (req, res) => {
   const username = req.query.username;
   if (!username) {
-    return res
-      .status(400)
-      .json({ status: "error", message: "Username required" });
+    return res.status(400).json({ status: "error", message: "Username required" });
   }
 
   if (!connections[username]) {
@@ -49,7 +56,7 @@ app.get("/connect", async (req, res) => {
       return obj?.urlList?.[0] || obj?.url?.[0] || obj?.url || null;
     }
 
-    // CHAT
+    // Event Handlers ================================
     tiktok.on("chat", (data) => {
       broadcast({
         type: "chat",
@@ -70,21 +77,21 @@ app.get("/connect", async (req, res) => {
         (catalogGift.diamonds || details.diamondCount || 0) *
         (data.repeatCount || 1);
 
-        broadcast({
-          type: "gift",
-          username,
-          nickname: data.user?.nickname || data.user?.uniqueId,
-          uniqueId: data.user?.uniqueId,
-          giftId: data.giftId,
-          giftName: catalogGift.name || data.giftDetails?.giftName || `Unknown`,
-          repeatCount: data.repeatCount,
-          diamondCount: diamonds,
-          profilePictureUrl: getImageUrl(data.user?.profilePicture),
-          giftImage: catalogGift.image || data.giftDetails?.giftImage?.urlList?.[0] || null,
-        });
+      broadcast({
+        type: "gift",
+        username,
+        nickname: data.user?.nickname || data.user?.uniqueId,
+        uniqueId: data.user?.uniqueId,
+        giftId: data.giftId,
+        giftName: catalogGift.name || data.giftDetails?.giftName || "Unknown",
+        repeatCount: data.repeatCount,
+        diamondCount: diamonds,
+        profilePictureUrl: getImageUrl(data.user?.profilePicture),
+        giftImage:
+          catalogGift.image || data.giftDetails?.giftImage?.urlList?.[0] || null,
+      });
     });
 
-    // LIKE
     tiktok.on("like", (data) => {
       broadcast({
         type: "like",
@@ -97,7 +104,6 @@ app.get("/connect", async (req, res) => {
       });
     });
 
-    // MEMBER JOIN
     tiktok.on("member", (data) => {
       broadcast({
         type: "join",
@@ -109,7 +115,6 @@ app.get("/connect", async (req, res) => {
       });
     });
 
-    // FOLLOW
     tiktok.on("follow", (data) => {
       broadcast({
         type: "follow",
@@ -120,7 +125,6 @@ app.get("/connect", async (req, res) => {
       });
     });
 
-    // SHARE
     tiktok.on("share", (data) => {
       broadcast({
         type: "share",
@@ -131,39 +135,6 @@ app.get("/connect", async (req, res) => {
       });
     });
 
-    // RAW DATA fallback (catch unknown messages)
-    tiktok.on("rawData", (msg) => {
-      try {
-        if (msg?.type === "WebcastInRoomBannerMessage") {
-          console.log(
-            `ℹ️ [${username}] Ignored unsupported message type: WebcastInRoomBannerMessage`
-          );
-          return;
-        }
-        // console.log("RAW:", msg.type, msg);
-      } catch (e) {
-        console.warn(`⚠️ [${username}] Failed to handle rawData`, e);
-      }
-    });
-
-    // Error handler yang auto-ignore schema decode error
-    tiktok.on("error", (err) => {
-      if (err?.exception?.message?.includes("WebcastInRoomBannerMessage")) {
-        console.log(
-          `ℹ️ [${username}] Skipped decode error for WebcastInRoomBannerMessage`
-        );
-        return;
-      }
-
-      if (err?.info?.includes("Failed to retrieve Room ID")) {
-        console.log(`ℹ️ [${username}] Fallback to API source for Room ID`);
-      } else {
-        console.warn(`⚠️ [${username}] TikTok error:`, err?.message || err);
-        if (err?.exception) console.debug(err.exception);
-      }
-    });
-
-    // VIEWER COUNT
     tiktok.on("roomUser", (data) => {
       broadcast({
         type: "viewer",
@@ -172,7 +143,6 @@ app.get("/connect", async (req, res) => {
       });
     });
 
-    // DISCONNECTED
     tiktok.on("disconnected", () => {
       console.log(`⚠️ Live stream ${username} ended`);
       broadcast({
@@ -183,7 +153,19 @@ app.get("/connect", async (req, res) => {
       delete connections[username];
     });
 
-    // CONNECT
+    tiktok.on("error", (err) => {
+      if (err?.exception?.message?.includes("WebcastInRoomBannerMessage")) {
+        console.log(`ℹ️ [${username}] Skipped decode error for WebcastInRoomBannerMessage`);
+        return;
+      }
+      if (err?.info?.includes("Failed to retrieve Room ID")) {
+        console.log(`ℹ️ [${username}] Fallback to API source for Room ID`);
+      } else {
+        console.warn(`⚠️ [${username}] TikTok error:`, err?.message || err);
+        if (err?.exception) console.debug(err.exception);
+      }
+    });
+
     try {
       await tiktok.connect();
       console.log(`✅ Connected to ${username}`);
@@ -213,7 +195,8 @@ function broadcast(msg) {
 }
 
 // ======================= START =======================
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`🚀 Backend running on http://localhost:${port}`);
-  console.log(`📡 WebSocket running on ws://localhost:8080`);
+  console.log(`📡 WebSocket running on ws://localhost:${port}`);
 });
+

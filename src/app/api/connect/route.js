@@ -5,12 +5,16 @@ export async function GET(req) {
   const username = searchParams.get("username");
 
   if (!username) {
-    return NextResponse.json({ status: "error", message: "Username required" }, { status: 400 });
+    return NextResponse.json(
+      { status: "error", message: "Username required" },
+      { status: 400 }
+    );
   }
 
   try {
-    // Forward request ke backend Node.js
-    const res = await fetch(`http://localhost:3001/connect?username=${username}`);
+    // Ambil URL backend dari env
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const res = await fetch(`${apiUrl}/connect?username=${username}`);
     const data = await res.json();
     return NextResponse.json(data);
   } catch (err) {

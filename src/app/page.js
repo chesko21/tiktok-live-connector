@@ -20,9 +20,9 @@ export default function Home() {
   
   useEffect(() => {
     if (!connected) return;
-
-    const socket = new WebSocket("ws://localhost:8080");
-
+  
+    const socket = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}`);
+  
     socket.onmessage = (msg) => {
       const data = JSON.parse(msg.data);
       if (data.username !== username) return;
