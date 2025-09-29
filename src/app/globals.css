@@ -1,26 +1,61 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+
+@keyframes floatingSmooth {
+  0%   { transform: translate(0, 0); }
+  20%  { transform: translate(5px, -8px); }
+  40%  { transform: translate(-5px, -16px); }
+  60%  { transform: translate(5px, -24px); }
+  80%  { transform: translate(-3px, -32px); }
+  100% { transform: translate(0, 0); }
+}
+.animate-floating {
+  animation: floatingSmooth 8s ease-in-out infinite;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+@keyframes bubble {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+  30%  { transform: translate(8px, -15px) scale(1.05) rotate(2deg); }
+  60%  { transform: translate(-6px, -30px) scale(0.95) rotate(-2deg); }
+  100% { transform: translate(0, -45px) scale(1) rotate(0deg); }
+  0% { opacity: 0.9; }
+50% { opacity: 1; }
+100% { opacity: 0.8; }
+
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+.animate-bubble {
+  animation: float-bubble 10s ease-in-out infinite;
+}
+
+@keyframes giftPopup {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  85% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.5);
+    opacity: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.animate-gift-popup {
+  animation: giftPopup 5s ease-in-out forwards;
 }
+
